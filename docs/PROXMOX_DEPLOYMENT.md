@@ -44,9 +44,9 @@ Proxmox Host (192.168.1.100)
 
 ### Proxmox Host Requirements
 - **Proxmox VE**: 7.x or 8.x
-- **CPU**: 4+ cores available
-- **RAM**: 8GB+ available
-- **Storage**: 50GB+ free space
+- **CPU**: 2+ cores available
+- **RAM**: 3GB+ available
+- **Storage**: 30GB+ free space
 - **Network**: Bridge interface (vmbr0)
 
 ### Network Planning
@@ -92,17 +92,17 @@ AutoShield requires a **privileged container** for Docker networking and securit
 
 **Root Disk Tab**:
 - **Storage**: local-lvm (or your preferred storage)
-- **Disk size**: 50 GB
+- **Disk size**: 30 GB
 - **ACL**: Enabled
 
 **CPU Tab**:
-- **Cores**: 4
-- **CPU limit**: 4 (100%)
+- **Cores**: 2
+- **CPU limit**: 2 (100%)
 - **CPU units**: 1024
 
 **Memory Tab**:
-- **Memory**: 8192 MB (8GB)
-- **Swap**: 2048 MB (2GB)
+- **Memory**: 2048 MB (2GB)
+- **Swap**: 512 MB (512MB)
 
 **Network Tab**:
 - **Name**: eth0
