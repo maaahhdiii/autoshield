@@ -1,0 +1,30 @@
+# Kali MCP Server Requirements
+# Production-ready security tools platform
+
+# MCP SDK and dependencies
+mcp==0.9.0
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+sse-starlette==1.8.2
+starlette==0.35.1
+
+# System monitoring
+psutil==5.9.8
+
+# Configuration and validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# HTTP client
+httpx==0.26.0
+
+# Utilities
+python-dotenv==1.0.0
+python-multipart==0.0.6
+
+# Logging and monitoring
+python-json-logger==2.0.7
+coloredlogs==15.0.1
+
+# Type hints support
+typing-extensions==4.9.0

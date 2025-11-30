@@ -1,0 +1,32 @@
+# Python AI Controller Requirements
+# Production-ready FastAPI application with MCP client
+
+# FastAPI and server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# MCP SDK
+mcp==0.9.0
+sse-starlette==1.8.2
+starlette==0.35.1
+
+# HTTP client for Java backend communication
+httpx==0.26.0
+
+# Data validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Configuration
+python-dotenv==1.0.0
+
+# Logging and monitoring
+python-json-logger==2.0.7
+coloredlogs==15.0.1
+
+# Utilities
+typing-extensions==4.9.0
+
+# System monitoring (optional, for health checks)
+psutil==5.9.8

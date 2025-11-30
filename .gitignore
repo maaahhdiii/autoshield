@@ -1,0 +1,68 @@
+# Environment files
+.env
+*.env
+!.env.example
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Build artifacts
+target/
+build/
+dist/
+*.class
+*.jar
+*.war
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node modules (if any frontend build tools)
+node_modules/
+npm-debug.log*
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker-compose.override.yml
+
+# Secrets
+secrets/
+*.key
+*.pem
+*.crt
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+junit.xml
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
