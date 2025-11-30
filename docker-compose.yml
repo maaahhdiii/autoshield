@@ -24,38 +24,64 @@ services:
       timeout: 5s
       retries: 5
 
-  # Java Backend (Spring Boot) - COMMENTED OUT until implementation complete
-  # java-backend:
-  #   build:
-  #     context: ./java-backend
-  #     dockerfile: Dockerfile
-  #   container_name: autoshield-backend
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8080:8080"  # Expose to Proxmox host
-  #   environment:
-  #     SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-prod}
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/autoshield
-  #     SPRING_DATASOURCE_USERNAME: autoshield
-  #     SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
-  #     PYTHON_AI_URL: http://python-ai:8000
-  #     PROXMOX_API_URL: ${PROXMOX_API_URL:-https://192.168.1.100:8006}
-  #     PROXMOX_TOKEN_ID: ${PROXMOX_TOKEN_ID}
-  #     PROXMOX_TOKEN_SECRET: ${PROXMOX_TOKEN_SECRET}
-  #     JWT_SECRET: ${JWT_SECRET:-change_me_in_production_min_256_bits}
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     python-ai:
-  #       condition: service_started
-  #   networks:
-  #     - autoshield-network
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 60s
+  # Java Backend (Spring Boot)
+  java-backend:
+    build:
+      context: ./java-backend
+      dockerfile: Dockerfile
+    container_name: autoshield-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # Expose to Proxmox host
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: autoshield
+      DB_USER: autoshield
+      DB_PASSWORD: ${DB_PASSWORD:-autoshield_secure_pass}
+      SERVER_PORT: 8080
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      PYTHON_AI_URL: http://python-ai:8000
+      KALI_MCP_URL: http://kali-mcp:8001
+      JWT_SECRET: ${JWT_SECRET:-autoshield_jwt_secret_key_change_in_production_minimum_256_bits_required_for_hs256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      python-ai:
+        condition: service_healthy
+      kali-mcp:
+        condition: service_healthy
+    networks:
+      - autoshield-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # React Frontend (Dashboard)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: autoshield-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"  # Expose to Proxmox host (Nginx serves on port 80 inside container)
+    environment:
+      VITE_API_URL: http://java-backend:8080
+    depends_on:
+      java-backend:
+        condition: service_healthy
+    networks:
+      - autoshield-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # Python AI Controller (FastAPI)
   python-ai:

@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: autoshield-backend
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:autoshield}
+    username: ${DB_USER:autoshield}
+    password: ${DB_PASSWORD:autoshield_secure_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+    open-in-view: false
+
+  security:
+    user:
+      name: ${ADMIN_USERNAME:admin}
+      password: ${ADMIN_PASSWORD:admin123}
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  error:
+    include-message: always
+    include-binding-errors: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# AutoShield MCP Server URLs
+autoshield:
+  mcp:
+    python-ai:
+      url: ${PYTHON_AI_URL:http://python-ai:8000}
+      timeout: 30000
+    kali-mcp:
+      url: ${KALI_MCP_URL:http://kali-mcp:8001}
+      timeout: 60000
+  
+  security:
+    jwt:
+      secret: ${JWT_SECRET:autoshield_jwt_secret_key_change_in_production_minimum_256_bits_required_for_hs256}
+      expiration: 86400000  # 24 hours in milliseconds
+    
+  scan:
+    default-timeout: 300000  # 5 minutes
+    max-concurrent: 5
+
+logging:
+  level:
+    root: INFO
+    com.autoshield: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
