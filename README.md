@@ -50,6 +50,12 @@ User Browser
 - **Quick Scans**: Fast Nmap port scans (60s timeout)
 - **Vulnerability Scans**: Comprehensive security assessments (300s timeout)
 - **Auto-Blocking**: Immediate IP blocking for confirmed attacks
+- **SSH Command Execution**: AI can execute defensive commands via SSH
+  - Block/unblock IPs via iptables
+  - Kill suspicious user sessions
+  - Disable compromised accounts
+  - Emergency shutdown/reboot
+  - Service management
 - **Cooldown Periods**: Prevents excessive scanning (5min) and blocking (1hr)
 
 ### 🔐 Production Security

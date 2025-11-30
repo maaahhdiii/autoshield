@@ -264,6 +264,13 @@ class ThreatAnalyzer:
                         self.block_cooldowns[source_ip] = datetime.utcnow()
                         self.blocked_ips.add(source_ip)
                         logger.warning(f"🚫 IP {source_ip} blocked: {reason}")
+                        
+                        # CRITICAL THREAT: Execute additional SSH defensive actions
+                        if assessment.threat_score >= 90:
+                            logger.critical(f"⚠️  CRITICAL THREAT DETECTED (score: {assessment.threat_score})")
+                            ssh_actions = await self._execute_ssh_defensive_actions(event, assessment)
+                            actions.extend(ssh_actions)
+                            
                     except Exception as e:
                         logger.error(f"❌ IP block failed: {e}")
                         actions.append(ActionResponse(
@@ -325,3 +332,84 @@ class ThreatAnalyzer:
             "is_whitelisted": ip in self.whitelisted_ips,
             "last_seen": max([e['timestamp'] for e in events]).isoformat() if events else None
         }
+    
+    async def _execute_ssh_defensive_actions(self, event: SecurityEvent, assessment: ThreatAssessment) -> List[ActionResponse]:
+        """
+        Execute SSH-based defensive actions for critical threats
+        These are more aggressive actions executed when threat score is very high
+        """
+        actions = []
+        
+        try:
+            from ssh_executor import get_defensive_actions
+            ssh_actions = get_defensive_actions()
+            
+            # For CONFIRMED attacks with very high score
+            if assessment.threat_score >= 95:
+                logger.critical("🚨 CRITICAL THREAT - Initiating aggressive defensive measures")
+                
+                # Option 1: Kill suspicious user sessions if we detect compromised account
+                if event.event_type == EventType.CONFIRMED_ATTACK and hasattr(event, 'username'):
+                    try:
+                        if settings.DRY_RUN_MODE:
+                            result = {"dry_run": True, "action": "kill_user_sessions"}
+                        else:
+                            result = ssh_actions.kill_user_sessions(event.username)
+                        
+                        actions.append(ActionResponse(
+                            success=result.get("success", False),
+                            action_taken="ssh_kill_user_sessions",
+                            tool_used="ssh_paramiko",
+                            result=json.dumps(result)
+                        ))
+                        logger.critical(f"Killed sessions for compromised user: {event.username}")
+                    except Exception as e:
+                        logger.error(f"Failed to kill user sessions: {e}")
+                
+                # Option 2: For extreme cases, prepare for shutdown
+                if assessment.threat_score >= 98:
+                    logger.critical("⚠️  EXTREME THREAT - System shutdown may be warranted")
+                    logger.critical("Manual intervention recommended - check /api/v1/defense/shutdown endpoint")
+                    
+                    actions.append(ActionResponse(
+                        success=True,
+                        action_taken="critical_alert_raised",
+                        tool_used="alert_system",
+                        result=json.dumps({
+                            "alert": "EXTREME_THREAT_DETECTED",
+                            "threat_score": assessment.threat_score,
+                            "recommendation": "Consider emergency shutdown",
+                            "endpoint": "/api/v1/defense/shutdown"
+                        })
+                    ))
+            
+            # For high-score brute force attacks
+            elif assessment.threat_score >= 90 and event.event_type == EventType.CONFIRMED_BRUTE_FORCE:
+                logger.warning("🔒 Brute force attack - Additional IP blocking via SSH")
+                
+                try:
+                    if settings.DRY_RUN_MODE:
+                        result = {"dry_run": True, "action": "ssh_block_ip"}
+                    else:
+                        # Double-block via SSH/iptables (backup to MCP firewall)
+                        result = ssh_actions.block_ip(event.source_ip)
+                    
+                    actions.append(ActionResponse(
+                        success=result.get("success", False),
+                        action_taken="ssh_block_ip_iptables",
+                        tool_used="ssh_iptables",
+                        result=json.dumps(result)
+                    ))
+                    logger.warning(f"Additional iptables block applied via SSH for {event.source_ip}")
+                except Exception as e:
+                    logger.error(f"SSH IP block failed: {e}")
+            
+        except Exception as e:
+            logger.error(f"SSH defensive actions failed: {e}")
+            actions.append(ActionResponse(
+                success=False,
+                action_taken="ssh_defensive_actions",
+                error=str(e)
+            ))
+        
+        return actions

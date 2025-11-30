@@ -22,6 +22,7 @@ from models import (
 from mcp_client import MCPClientManager
 from threat_analyzer import ThreatAnalyzer
 from config import settings
+from ssh_executor import get_defensive_actions, SSHExecutor
 
 # Configure logging
 logging.basicConfig(
@@ -386,6 +387,305 @@ async def get_failed_logins(hours: int = 24):
     try:
         result = await mcp_client.get_failed_logins(hours)
         return json.loads(result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# SSH DEFENSIVE ACTIONS ENDPOINTS
+# ============================================
+
+@app.post("/api/v1/defense/shutdown")
+async def emergency_shutdown(request: Request, delay: int = 1):
+    """
+    Emergency system shutdown (nuclear option)
+    Use when critical threat detected and system compromise suspected
+    """
+    correlation_id = request.state.correlation_id
+    logger.critical(f"🚨 EMERGENCY SHUTDOWN REQUESTED - Delay: {delay} minutes",
+                   extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.shutdown_system(delay=delay)
+        
+        logger.critical(f"Shutdown initiated: {result}",
+                       extra={'correlation_id': correlation_id})
+        
+        return {
+            "success": result["success"],
+            "message": f"System shutdown scheduled in {delay} minute(s)",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        logger.error(f"Failed to shutdown system: {e}",
+                    extra={'correlation_id': correlation_id})
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/cancel-shutdown")
+async def cancel_emergency_shutdown(request: Request):
+    """Cancel pending shutdown"""
+    correlation_id = request.state.correlation_id
+    logger.info("Cancelling system shutdown", extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.cancel_shutdown()
+        
+        return {
+            "success": result["success"],
+            "message": "Shutdown cancelled",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/reboot")
+async def emergency_reboot(request: Request, delay: int = 1):
+    """Emergency system reboot"""
+    correlation_id = request.state.correlation_id
+    logger.critical(f"🔄 EMERGENCY REBOOT REQUESTED - Delay: {delay} minutes",
+                   extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.reboot_system(delay=delay)
+        
+        return {
+            "success": result["success"],
+            "message": f"System reboot scheduled in {delay} minute(s)",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/block-ip-ssh")
+async def block_ip_via_ssh(request: BlockIPRequest):
+    """Block IP address via SSH/iptables (alternative to MCP)"""
+    logger.warning(f"🚫 SSH IP Block requested: {request.ip_address}")
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.block_ip(request.ip_address)
+        
+        return {
+            "success": result["success"],
+            "message": f"IP {request.ip_address} blocked via iptables",
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/unblock-ip-ssh")
+async def unblock_ip_via_ssh(ip_address: str):
+    """Unblock IP address via SSH/iptables"""
+    logger.info(f"✅ SSH IP Unblock requested: {ip_address}")
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.unblock_ip(ip_address)
+        
+        return {
+            "success": result["success"],
+            "message": f"IP {ip_address} unblocked",
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/kill-user-sessions")
+async def kill_user_sessions(username: str, request: Request):
+    """Kill all sessions for a suspicious user"""
+    correlation_id = request.state.correlation_id
+    logger.warning(f"⚡ KILL USER SESSIONS: {username}",
+                  extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.kill_user_sessions(username)
+        
+        return {
+            "success": result["success"],
+            "message": f"All sessions for user '{username}' terminated",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/disable-user")
+async def disable_user_account(username: str, request: Request):
+    """Disable a compromised user account"""
+    correlation_id = request.state.correlation_id
+    logger.warning(f"🔒 DISABLE USER ACCOUNT: {username}",
+                  extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.disable_user_account(username)
+        
+        return {
+            "success": result["success"],
+            "message": f"User account '{username}' disabled",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/enable-user")
+async def enable_user_account(username: str, request: Request):
+    """Re-enable a user account"""
+    correlation_id = request.state.correlation_id
+    logger.info(f"🔓 ENABLE USER ACCOUNT: {username}",
+               extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.enable_user_account(username)
+        
+        return {
+            "success": result["success"],
+            "message": f"User account '{username}' enabled",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/restart-service")
+async def restart_service(service_name: str, request: Request):
+    """Restart a system service"""
+    correlation_id = request.state.correlation_id
+    logger.warning(f"🔄 RESTART SERVICE: {service_name}",
+                  extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.restart_service(service_name)
+        
+        return {
+            "success": result["success"],
+            "message": f"Service '{service_name}' restarted",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/stop-service")
+async def stop_service(service_name: str, request: Request):
+    """Stop a system service"""
+    correlation_id = request.state.correlation_id
+    logger.warning(f"⏹️  STOP SERVICE: {service_name}",
+                  extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.stop_service(service_name)
+        
+        return {
+            "success": result["success"],
+            "message": f"Service '{service_name}' stopped",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/defense/flush-firewall")
+async def flush_firewall_rules(request: Request):
+    """Flush all firewall rules (emergency unlock)"""
+    correlation_id = request.state.correlation_id
+    logger.critical("🚨 FLUSH ALL FIREWALL RULES",
+                   extra={'correlation_id': correlation_id})
+    
+    try:
+        actions = get_defensive_actions()
+        result = actions.flush_all_firewall_rules()
+        
+        return {
+            "success": result["success"],
+            "message": "All firewall rules flushed",
+            "result": result,
+            "correlation_id": correlation_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/system/connections")
+async def get_active_connections():
+    """Get active network connections"""
+    try:
+        actions = get_defensive_actions()
+        result = actions.get_active_connections()
+        
+        return {
+            "success": result["success"],
+            "connections": result.get("connections", ""),
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/system/load")
+async def get_system_load():
+    """Get current system load and resource usage"""
+    try:
+        actions = get_defensive_actions()
+        result = actions.get_system_load()
+        
+        return {
+            "success": result["success"],
+            "data": result.get("results", []),
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/ssh/execute")
+async def execute_custom_command(
+    command: str,
+    use_sudo: bool = False,
+    request: Request = None
+):
+    """
+    Execute custom SSH command (USE WITH CAUTION!)
+    Requires admin privileges
+    """
+    correlation_id = request.state.correlation_id if request else 'N/A'
+    logger.warning(f"⚠️  CUSTOM SSH COMMAND: {command} (sudo={use_sudo})",
+                  extra={'correlation_id': correlation_id})
+    
+    try:
+        from ssh_executor import get_executor
+        executor = get_executor()
+        result = executor.execute_command(command, sudo=use_sudo)
+        
+        return {
+            "success": result["success"],
+            "stdout": result["stdout"],
+            "stderr": result["stderr"],
+            "exit_code": result["exit_code"],
+            "command": result["command"],
+            "correlation_id": correlation_id
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
